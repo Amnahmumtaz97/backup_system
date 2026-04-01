@@ -1,0 +1,7 @@
+{
+  "source_path": "C:/path/to/source/folder",
+  "destination_path": "backups",
+  "log_path": "logs/audit.log",
+  "passphrase": "change_this_to_a_strong_passphrase",
+  "encrypt": true
+}

@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DataVault — Secure Backup System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10;
+    --bg2: #0d1117;
+    --bg3: #111820;
+    --panel: #131b24;
+    --border: #1e2d3d;
+    --border2: #243447;
+    --accent: #00d4ff;
+    --accent2: #0099bb;
+    --green: #00ff88;
+    --green2: #00cc6a;
+    --orange: #ff9500;
+    --red: #ff4757;
+    --yellow: #ffd60a;
+    --text: #c9d8e8;
+    --text2: #7a97b0;
+    --text3: #4a6580;
+    --mono: 'Space Mono', monospace;
+    --display: 'Syne', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline effect */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,212,255,0.015) 2px, rgba(0,212,255,0.015) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ─── LAYOUT ─── */
+  .app { display: flex; height: 100vh; }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+  }
+
+  .logo {
+    padding: 28px 20px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo-mark {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+    text-shadow: 0 0 20px rgba(0,212,255,0.4);
+  }
+  .logo-sub {
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .nav { padding: 16px 0; flex: 1; }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 20px;
+    cursor: pointer;
+    color: var(--text2);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    transition: all 0.15s;
+    border-left: 3px solid transparent;
+    position: relative;
+  }
+  .nav-item:hover { color: var(--text); background: rgba(0,212,255,0.04); }
+  .nav-item.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: rgba(0,212,255,0.07);
+  }
+  .nav-item.active .nav-icon { filter: drop-shadow(0 0 4px var(--accent)); }
+  .nav-icon { width: 16px; text-align: center; font-size: 14px; }
+
+  .sidebar-status {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .status-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ─── MAIN ─── */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--bg);
+  }
+
+  .topbar {
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg2);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .page-title {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .enc-badge {
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--green);
+    color: var(--green);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .content { padding: 28px 32px; }
+
+  /* ─── PANELS ─── */
+  .page { display: none; animation: fadeIn 0.2s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ─── CARDS ─── */
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.6;
+  }
+  .card:hover { border-color: var(--border2); }
+  .card-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; }
+  .card-value {
+    font-family: var(--display);
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,212,255,0.3);
+  }
+  .card-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .card.green::before { background: var(--green); }
+  .card.green .card-value { color: var(--green); text-shadow: 0 0 20px rgba(0,255,136,0.3); }
+  .card.orange::before { background: var(--orange); }
+  .card.orange .card-value { color: var(--orange); }
+  .card.yellow::before { background: var(--yellow); }
+  .card.yellow .card-value { color: var(--yellow); }
+
+  /* ─── SECTION ─── */
+  .section { margin-bottom: 28px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-title {
+    font-family: var(--display);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* ─── BACKUP ACTIONS ─── */
+  .backup-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .backup-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 22px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .backup-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(0,212,255,0.06), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .backup-card:hover { border-color: var(--accent); }
+  .backup-card:hover::after { opacity: 1; }
+  .backup-card:active { transform: scale(0.98); }
+  .bc-icon { font-size: 28px; margin-bottom: 10px; }
+  .bc-title {
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .bc-desc { font-size: 11px; color: var(--text3); line-height: 1.5; }
+  .bc-tag {
+    display: inline-block;
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-top: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .bc-tag.full { background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.3); }
+  .bc-tag.incr { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+  .bc-tag.diff { background: rgba(255,149,0,0.1); color: var(--orange); border: 1px solid rgba(255,149,0,0.3); }
+
+  /* ─── PROGRESS ─── */
+  .progress-bar {
+    background: var(--bg3);
+    border-radius: 4px;
+    height: 6px;
+    overflow: hidden;
+    margin-top: 10px;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    width: 0%;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  /* ─── TABLE ─── */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .data-table th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    font-weight: 400;
+  }
+  .data-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text2);
+    vertical-align: middle;
+  }
+  .data-table tr:hover td { background: rgba(0,212,255,0.03); }
+  .table-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  /* ─── BADGES ─── */
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-full { background: rgba(0,212,255,0.12); color: var(--accent); }
+  .badge-incr { background: rgba(0,255,136,0.12); color: var(--green); }
+  .badge-diff { background: rgba(255,149,0,0.12); color: var(--orange); }
+  .badge-enc { background: rgba(255,214,10,0.12); color: var(--yellow); }
+
+  /* ─── BUTTONS ─── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 5px;
+    border: 1px solid var(--border2);
+    background: var(--bg3);
+    color: var(--text2);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary {
+    background: rgba(0,212,255,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .btn-primary:hover { background: rgba(0,212,255,0.2); box-shadow: 0 0 12px rgba(0,212,255,0.2); }
+  .btn-danger { border-color: var(--red); color: var(--red); }
+  .btn-danger:hover { background: rgba(255,71,87,0.1); }
+  .btn-success { border-color: var(--green); color: var(--green); }
+  .btn-success:hover { background: rgba(0,255,136,0.1); }
+  .btn-sm { padding: 5px 10px; font-size: 10px; }
+
+  /* ─── FORMS ─── */
+  .form-group { margin-bottom: 18px; }
+  .form-label { display: block; font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .form-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,212,255,0.1); }
+  .form-select {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .form-select:focus { outline: none; border-color: var(--accent); }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* ─── TOGGLE ─── */
+  .toggle-wrap { display: flex; align-items: center; gap: 10px; }
+  .toggle {
+    width: 40px; height: 22px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 11px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle.on { background: rgba(0,212,255,0.2); border-color: var(--accent); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--text3);
+    top: 2px; left: 2px;
+    transition: all 0.2s;
+  }
+  .toggle.on::after { background: var(--accent); left: 20px; box-shadow: 0 0 6px var(--accent); }
+  .toggle-label { font-size: 12px; color: var(--text2); }
+
+  /* ─── TOAST ─── */
+  .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    background: var(--panel);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 12px 18px;
+    font-size: 12px;
+    color: var(--text);
+    min-width: 260px;
+    animation: slideIn 0.2s ease;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  .toast.success { border-left: 3px solid var(--green); }
+  .toast.error { border-left: 3px solid var(--red); }
+  .toast.info { border-left: 3px solid var(--accent); }
+  @keyframes slideIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+
+  /* ─── LOG ─── */
+  .log-container {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    max-height: 420px;
+    overflow-y: auto;
+    font-size: 11px;
+    font-family: var(--mono);
+  }
+  .log-line { padding: 3px 0; border-bottom: 1px solid rgba(30,45,61,0.5); color: var(--text2); }
+  .log-line:last-child { border-bottom: none; }
+  .log-line.SUCCESS { color: var(--green); }
+  .log-line.ERROR { color: var(--red); }
+  .log-line.WARNING { color: var(--orange); }
+  .log-line.INFO { color: var(--text2); }
+
+  /* ─── MODAL ─── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(8,12,16,0.85);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; animation: fadeIn 0.15s ease; }
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 28px;
+    width: 440px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .modal-title { font-family: var(--display); font-size: 16px; font-weight: 700; margin-bottom: 18px; }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+
+  /* ─── SPINNER ─── */
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  /* ─── RUNNING INDICATOR ─── */
+  .running-bar {
+    display: none;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    align-items: center;
+    gap: 14px;
+  }
+  .running-bar.show { display: flex; }
+  .running-text { font-size: 12px; color: var(--accent); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+  /* ─── SCHEDULE PAGE ─── */
+  .schedule-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .schedule-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 22px;
+  }
+  .schedule-box-title { font-family: var(--display); font-size: 13px; font-weight: 700; margin-bottom: 16px; color: var(--text); }
+
+  /* ─── EMPTY STATE ─── */
+  .empty-state {
+    padding: 50px 20px;
+    text-align: center;
+    color: var(--text3);
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-text { font-size: 13px; }
+
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .toolbar .form-input { width: 260px; }
+
+  .preview-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 11px;
+    color: var(--text2);
+  }
+  .preview-list {
+    max-height: 120px;
+    overflow-y: auto;
+    margin-top: 8px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+  }
+  .preview-list div { padding: 2px 0; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">DataVault</div>
+      <div class="logo-sub">Secure Backup System</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" onclick="navigate('dashboard')">
+        <span class="nav-icon">⬡</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="navigate('backup')">
+        <span class="nav-icon">◈</span> Run Backup
+      </div>
+      <div class="nav-item" onclick="navigate('restore')">
+        <span class="nav-icon">↺</span> Restore
+      </div>
+      <div class="nav-item" onclick="navigate('schedule')">
+        <span class="nav-icon">◷</span> Schedule
+      </div>
+      <div class="nav-item" onclick="navigate('logs')">
+        <span class="nav-icon">≡</span> Audit Logs
+      </div>
+      <div class="nav-item" onclick="navigate('settings')">
+        <span class="nav-icon">⊞</span> Settings
+      </div>
+    </nav>
+    <div class="sidebar-status">
+      <span class="status-dot"></span>
+      <span id="enc-status">AES-256 Active</span>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main">
+    <header class="topbar">
+      <div class="page-title" id="page-title">Dashboard</div>
+      <div class="topbar-right">
+        <span class="enc-badge" id="enc-badge">🔐 ENCRYPTED</span>
+        <span style="font-size:11px;color:var(--text3)" id="clock"></span>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ── DASHBOARD ── -->
+      <div class="page active" id="page-dashboard">
+        <div class="cards-grid">
+          <div class="card">
+            <div class="card-label">Total Backups</div>
+            <div class="card-value" id="stat-total">—</div>
+            <div class="card-sub">all time</div>
+          </div>
+          <div class="card green">
+            <div class="card-label">Storage Used</div>
+            <div class="card-value" id="stat-size">—</div>
+            <div class="card-sub">compressed + encrypted</div>
+          </div>
+          <div class="card orange">
+            <div class="card-label">Last Backup</div>
+            <div class="card-value" id="stat-last" style="font-size:14px;padding-top:6px">—</div>
+            <div class="card-sub" id="stat-last-type">—</div>
+          </div>
+          <div class="card yellow">
+            <div class="card-label">Encryption</div>
+            <div class="card-value" id="stat-enc" style="font-size:16px;padding-top:6px">AES-256</div>
+            <div class="card-sub">SHA-256 integrity</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Backup Health</div>
+            <div class="card-value" id="stat-health" style="font-size:18px;padding-top:6px">—</div>
+            <div class="card-sub" id="stat-health-sub">verified archives</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title">Recent Backups</div>
+            <button class="btn btn-sm" onclick="navigate('backup')">+ New Backup</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Name</th><th>Type</th><th>Files</th><th>Size</th><th>Duration</th><th>Encrypted</th>
+                </tr>
+              </thead>
+              <tbody id="recent-backups-tbody">
+                <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">⬡</div><div class="empty-text">No backups yet</div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── BACKUP ── -->
+      <div class="page" id="page-backup">
+        <div class="running-bar" id="running-bar">
+          <div class="spinner"></div>
+          <div class="running-text" id="running-text">Running backup...</div>
+          <div style="flex:1"><div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div></div>
+        </div>
+
+        <div class="section">
+          <div class="section-header"><div class="section-title">Choose Backup Type</div></div>
+          <div class="preview-box" id="preview-box" style="margin-bottom:14px">
+            Select a backup type to preview file changes before running.
+          </div>
+          <div class="backup-actions">
+            <div class="backup-card" onclick="previewBackup('full')" ondblclick="runBackup('full')">
+              <div class="bc-icon">◉</div>
+              <div class="bc-title">Full Backup</div>
+              <div class="bc-desc">Copy every file in the source directory. Creates a complete independent snapshot.</div>
+              <span class="bc-tag full">Recommended First</span>
+            </div>
+            <div class="backup-card" onclick="previewBackup('incremental')" ondblclick="runBackup('incremental')">
+              <div class="bc-icon">◈</div>
+              <div class="bc-title">Incremental</div>
+              <div class="bc-desc">Only backs up files changed since the last backup of any type. Fastest option.</div>
+              <span class="bc-tag incr">Fastest</span>
+            </div>
+            <div class="backup-card" onclick="previewBackup('differential')" ondblclick="runBackup('differential')">
+              <div class="bc-icon">◇</div>
+              <div class="bc-title">Differential</div>
+              <div class="bc-desc">Backs up all changes since the last full backup. Faster restore than incremental.</div>
+              <span class="bc-tag diff">Balanced</span>
+            </div>
+          </div>
+          <div style="margin-top:12px">
+            <button class="btn btn-primary" onclick="runBackup(selectedBackupType)">Run Selected Backup</button>
+            <span style="font-size:11px;color:var(--text3);margin-left:8px">Tip: single click = preview, run button = execute</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-header"><div class="section-title">All Backups</div></div>
+          <div class="toolbar">
+            <input class="form-input" id="backup-search" placeholder="Search backups by name/type" oninput="renderBackupsTable(backups)">
+            <button class="btn" onclick="verifyAllBackups()">Verify All</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr><th>Name</th><th>Type</th><th>Files</th><th>Size</th><th>Duration</th><th>Encrypted</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="all-backups-tbody">
+                <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">⬡</div><div class="empty-text">No backups yet — run your first backup above</div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── RESTORE ── -->
+      <div class="page" id="page-restore">
+        <div class="section">
+          <div class="section-header"><div class="section-title">Restore from Backup</div></div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr><th>Name</th><th>Type</th><th>Files</th><th>Size</th><th>Encrypted</th><th>Restore</th></tr>
+              </thead>
+              <tbody id="restore-tbody">
+                <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">↺</div><div class="empty-text">No backups available to restore</div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SCHEDULE ── -->
+      <div class="page" id="page-schedule">
+        <div class="schedule-grid">
+          <div class="schedule-box">
+            <div class="schedule-box-title">Automatic Schedule</div>
+            <div class="form-group">
+              <div class="toggle-wrap">
+                <div class="toggle" id="schedule-toggle" onclick="toggleSchedule()"></div>
+                <span class="toggle-label" id="schedule-toggle-label">Disabled</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Backup Type</label>
+              <select class="form-select" id="sched-type">
+                <option value="incremental">Incremental</option>
+                <option value="full">Full</option>
+                <option value="differential">Differential</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Interval (Hours)</label>
+              <input class="form-input" id="sched-interval" type="number" min="1" max="168" value="24">
+            </div>
+            <button class="btn btn-primary" onclick="saveSchedule()">Save Schedule</button>
+            <button class="btn" onclick="runScheduledNow()">Run Now</button>
+          </div>
+          <div class="schedule-box">
+            <div class="schedule-box-title">Schedule Status</div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.9">
+              <div>Status: <span id="sched-status" style="color:var(--text3)">Loading...</span></div>
+              <div>Last Run: <span id="sched-last" style="color:var(--text3)">—</span></div>
+              <div>Next Run: <span id="sched-next" style="color:var(--text3)">—</span></div>
+              <div>Type: <span id="sched-btype" style="color:var(--text3)">—</span></div>
+              <div>Interval: <span id="sched-int" style="color:var(--text3)">—</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── LOGS ── -->
+      <div class="page" id="page-logs">
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title">Audit Log</div>
+            <button class="btn btn-sm" onclick="loadLogs()">↻ Refresh</button>
+          </div>
+          <div class="log-container" id="log-container">
+            <div class="empty-state"><div class="empty-icon">≡</div><div class="empty-text">No log entries yet</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SETTINGS ── -->
+      <div class="page" id="page-settings">
+        <div style="max-width:560px">
+          <div class="section">
+            <div class="section-header"><div class="section-title">Configuration</div></div>
+            <div class="schedule-box">
+              <div class="form-group">
+                <label class="form-label">Source Path (Directory to Back Up)</label>
+                <input class="form-input" id="cfg-source" placeholder="/home/user/Documents">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Destination Path (Where Backups Are Stored)</label>
+                <input class="form-input" id="cfg-dest" placeholder="backups/">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Log File Path</label>
+                <input class="form-input" id="cfg-log" placeholder="logs/audit.log">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Encryption</label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                  <input type="checkbox" id="cfg-encrypt" style="width:16px;height:16px;accent-color:var(--accent)">
+                  <span style="font-size:13px;color:var(--text2)">Enable AES-256 encryption on backups</span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Encryption Passphrase</label>
+                <input class="form-input" id="cfg-pass" type="password" placeholder="••••••••">
+                <div style="font-size:10px;color:var(--text3);margin-top:4px">Leave blank to keep existing passphrase. Used for AES-256 key derivation via PBKDF2.</div>
+              </div>
+              <button class="btn btn-primary" onclick="saveConfig()">Save Configuration</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+</div>
+
+<!-- ── RESTORE MODAL ── -->
+<div class="modal-overlay" id="restore-modal">
+  <div class="modal">
+    <div class="modal-title">↺ Restore Backup</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:18px">Integrity will be verified via SHA-256 before restoring.</p>
+    <div class="form-group">
+      <label class="form-label">Backup</label>
+      <input class="form-input" id="restore-name" readonly>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Restore To Path</label>
+      <input class="form-input" id="restore-path" placeholder="/home/user/restored">
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-success" onclick="confirmRestore()">Restore</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST CONTAINER ── -->
+<div class="toast-container" id="toasts"></div>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let currentPage = 'dashboard';
+let backups = [];
+let selectedBackupType = 'incremental';
+
+// ─── CLOCK ────────────────────────────────────────────────────────────────────
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── NAVIGATE ────────────────────────────────────────────────────────────────
+const pageTitles = {
+  dashboard: 'Dashboard',
+  backup: 'Run Backup',
+  restore: 'Restore',
+  schedule: 'Schedule',
+  logs: 'Audit Logs',
+  settings: 'Settings'
+};
+
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if(n.textContent.trim().toLowerCase().startsWith(pageTitles[page].substring(0,4).toLowerCase())) {
+      n.classList.add('active');
+    }
+  });
+  document.getElementById('page-title').textContent = pageTitles[page];
+  currentPage = page;
+  if(page === 'dashboard') loadDashboard();
+  if(page === 'backup') loadBackups();
+  if(page === 'restore') loadRestore();
+  if(page === 'logs') loadLogs();
+  if(page === 'settings') loadConfig();
+  if(page === 'schedule') loadSchedule();
+}
+
+// ─── API CALLS ────────────────────────────────────────────────────────────────
+async function api(endpoint, method='GET', body=null) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if(body) opts.body = JSON.stringify(body);
+  try {
+    const r = await fetch('/api' + endpoint, opts);
+    return await r.json();
+  } catch(e) {
+    toast('Cannot connect to server. Is app.py running?', 'error');
+    return null;
+  }
+}
+
+// ─── HELPERS ────────────────────────────────────────────────────────────────
+function formatSize(bytes) {
+  if(bytes < 1024) return bytes + ' B';
+  if(bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  if(bytes < 1073741824) return (bytes/1048576).toFixed(1) + ' MB';
+  return (bytes/1073741824).toFixed(2) + ' GB';
+}
+
+function formatTS(ts) {
+  if(!ts) return '—';
+  const m = String(ts).match(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/);
+  if(!m) return ts;
+  return `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}`;
+}
+
+function badgeType(t) {
+  const map = {full:'badge-full',incremental:'badge-incr',differential:'badge-diff'};
+  return `<span class="badge ${map[t]||'badge-full'}">${t}</span>`;
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function toast(msg, type='info') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  const stats = await api('/stats');
+  if(!stats) return;
+  document.getElementById('stat-total').textContent = stats.total_backups || '0';
+  document.getElementById('stat-size').textContent = formatSize(stats.total_size || 0);
+  if(stats.latest) {
+    document.getElementById('stat-last').textContent = formatTS(stats.latest.timestamp).split(' ')[0];
+    document.getElementById('stat-last-type').textContent = stats.latest.type;
+  }
+  document.getElementById('stat-enc').textContent = stats.encryption ? 'AES-256' : 'Off';
+
+  const health = await api('/backup/verify', 'POST', {});
+  if(health && typeof health.valid === 'number') {
+    document.getElementById('stat-health').textContent = `${health.valid}/${health.total}`;
+    document.getElementById('stat-health-sub').textContent = health.invalid === 0 ? 'all verified' : `${health.invalid} issue(s)`;
+  }
+
+  const bkps = await api('/backup/list');
+  if(!bkps) return;
+  backups = bkps;
+  const tbody = document.getElementById('recent-backups-tbody');
+  if(bkps.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">⬡</div><div class="empty-text">No backups yet</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = bkps.slice(0,5).map(b => `
+    <tr>
+      <td style="color:var(--text);font-size:11px">${b.name}</td>
+      <td>${badgeType(b.type)}</td>
+      <td>${b.files}</td>
+      <td>${formatSize(b.size)}</td>
+      <td>${b.duration}s</td>
+      <td>${b.encrypted ? '<span class="badge badge-enc">🔐 Yes</span>' : '<span style="color:var(--text3)">No</span>'}</td>
+    </tr>`).join('');
+}
+
+// ─── BACKUP ────────────────────────────────────────────────────────────────────
+async function loadBackups() {
+  const bkps = await api('/backup/list');
+  if(!bkps) return;
+  backups = bkps;
+  renderBackupsTable(bkps);
+}
+
+function renderBackupsTable(bkps) {
+  const q = (document.getElementById('backup-search')?.value || '').toLowerCase().trim();
+  const filtered = q ? bkps.filter(b => (`${b.name} ${b.type}`).toLowerCase().includes(q)) : bkps;
+  const tbody = document.getElementById('all-backups-tbody');
+  if(filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">⬡</div><div class="empty-text">No backups yet — run your first backup above</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(b => `
+    <tr>
+      <td style="color:var(--text);font-size:11px">${b.name}</td>
+      <td>${badgeType(b.type)}</td>
+      <td>${b.files}</td>
+      <td>${formatSize(b.size)}</td>
+      <td>${b.duration}s</td>
+      <td>${b.encrypted ? '<span class="badge badge-enc">🔐 Yes</span>' : '<span style="color:var(--text3)">No</span>'}</td>
+      <td>
+        <button class="btn btn-sm" onclick="verifyBackup('${b.name}')">Verify</button>
+        <button class="btn btn-sm" onclick="downloadBackup('${b.name}')">Download</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteBackup('${b.name}')">Delete</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function previewBackup(type) {
+  selectedBackupType = type;
+  const p = await api('/backup/preview?type=' + encodeURIComponent(type));
+  if(!p) return;
+  const box = document.getElementById('preview-box');
+  const list = [...(p.added || []).slice(0, 8), ...(p.modified || []).slice(0, 8)].map(x => `<div>${x}</div>`).join('');
+  box.innerHTML = `
+    <div><strong style="color:var(--text)">Preview:</strong> ${type.toUpperCase()} | Added: ${p.added?.length || 0}, Modified: ${p.modified?.length || 0}, Deleted: ${p.deleted?.length || 0}</div>
+    <div style="margin-top:4px;color:var(--text3)">Double-click a card or press "Run Selected Backup" to execute.</div>
+    <div class="preview-list">${list || '<div>No changed files detected.</div>'}</div>
+  `;
+}
+
+async function runBackup(type) {
+  const bar = document.getElementById('running-bar');
+  const fill = document.getElementById('progress-fill');
+  const txt = document.getElementById('running-text');
+  bar.classList.add('show');
+  txt.textContent = `Running ${type} backup...`;
+
+  // Animate progress
+  let pct = 0;
+  const anim = setInterval(() => {
+    pct = Math.min(pct + Math.random() * 12, 90);
+    fill.style.width = pct + '%';
+  }, 200);
+
+  const result = await api('/backup/run', 'POST', { type });
+  clearInterval(anim);
+  fill.style.width = '100%';
+
+  setTimeout(() => {
+    bar.classList.remove('show');
+    fill.style.width = '0%';
+  }, 800);
+
+  if(!result) return;
+  if(result.status === 'success') {
+    toast(`✅ ${type} backup complete — ${result.files} files in ${result.duration}s`, 'success');
+    loadBackups();
+    if(currentPage === 'dashboard') loadDashboard();
+  } else if(result.status === 'up_to_date') {
+    toast('ℹ️ Already up to date — no changes detected', 'info');
+  } else {
+    toast(`Error: ${result.message}`, 'error');
+  }
+}
+
+async function deleteBackup(name) {
+  if(!confirm(`Delete backup "${name}"? This cannot be undone.`)) return;
+  const r = await api('/backup/delete', 'POST', { name });
+  if(r && r.status === 'success') {
+    toast('Backup deleted', 'info');
+    loadBackups();
+    loadDashboard();
+  }
+}
+
+async function verifyBackup(name) {
+  const r = await api('/backup/verify', 'POST', { name });
+  if(!r) return;
+  if(r.valid) toast(`Integrity OK: ${name}`, 'success');
+  else toast(`Integrity failed: ${name}`, 'error');
+}
+
+async function verifyAllBackups() {
+  const r = await api('/backup/verify', 'POST', {});
+  if(!r) return;
+  toast(`Verification complete: ${r.valid}/${r.total} valid`, r.invalid === 0 ? 'success' : 'info');
+  if(currentPage === 'dashboard') loadDashboard();
+}
+
+function downloadBackup(name) {
+  window.location.href = '/api/backup/download/' + encodeURIComponent(name);
+}
+
+// ─── RESTORE ────────────────────────────────────────────────────────────────
+async function loadRestore() {
+  const bkps = await api('/backup/list');
+  if(!bkps) return;
+  const tbody = document.getElementById('restore-tbody');
+  if(bkps.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">↺</div><div class="empty-text">No backups available to restore</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = bkps.map(b => `
+    <tr>
+      <td style="color:var(--text);font-size:11px">${b.name}</td>
+      <td>${badgeType(b.type)}</td>
+      <td>${b.files}</td>
+      <td>${formatSize(b.size)}</td>
+      <td>${b.encrypted ? '<span class="badge badge-enc">🔐 Yes</span>' : 'No'}</td>
+      <td><button class="btn btn-sm btn-success" onclick="openRestoreModal('${b.name}')">Restore</button></td>
+    </tr>`).join('');
+}
+
+function openRestoreModal(name) {
+  document.getElementById('restore-name').value = name;
+  document.getElementById('restore-path').value = '';
+  document.getElementById('restore-modal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('restore-modal').classList.remove('open');
+}
+
+async function confirmRestore() {
+  const name = document.getElementById('restore-name').value;
+  const path = document.getElementById('restore-path').value;
+  if(!path) { toast('Please enter a restore path', 'error'); return; }
+  closeModal();
+  toast('Verifying integrity and restoring...', 'info');
+  const r = await api('/backup/restore', 'POST', { name, restore_path: path });
+  if(!r) return;
+  if(r.status === 'success') {
+    toast(`✅ Restored ${r.files} files to "${r.path}" in ${r.duration}s`, 'success');
+  } else {
+    toast(`Restore failed: ${r.message}`, 'error');
+  }
+}
+
+// ─── LOGS ────────────────────────────────────────────────────────────────────
+async function loadLogs() {
+  const logs = await api('/logs?n=150');
+  const container = document.getElementById('log-container');
+  if(!logs || logs.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">≡</div><div class="empty-text">No log entries yet</div></div>`;
+    return;
+  }
+  container.innerHTML = logs.map(line => {
+    let cls = 'INFO';
+    if(line.includes('[SUCCESS]')) cls = 'SUCCESS';
+    else if(line.includes('[ERROR]')) cls = 'ERROR';
+    else if(line.includes('[WARNING]')) cls = 'WARNING';
+    return `<div class="log-line ${cls}">${line}</div>`;
+  }).join('');
+}
+
+// ─── SCHEDULE ────────────────────────────────────────────────────────────────
+let schedEnabled = false;
+
+async function loadSchedule() {
+  const s = await api('/schedule');
+  if(!s) return;
+  schedEnabled = s.enabled;
+  const toggle = document.getElementById('schedule-toggle');
+  const label = document.getElementById('schedule-toggle-label');
+  toggle.className = 'toggle' + (schedEnabled ? ' on' : '');
+  label.textContent = schedEnabled ? 'Enabled' : 'Disabled';
+  document.getElementById('sched-type').value = s.backup_type || 'incremental';
+  document.getElementById('sched-interval').value = s.interval_hours || 24;
+  document.getElementById('sched-status').textContent = s.enabled ? '🟢 Active' : '⭕ Inactive';
+  document.getElementById('sched-last').textContent = s.last_run_str || 'Never';
+  document.getElementById('sched-next').textContent = s.next_run_str || '—';
+  document.getElementById('sched-btype').textContent = s.backup_type || '—';
+  document.getElementById('sched-int').textContent = s.interval_hours ? `Every ${s.interval_hours}h` : '—';
+}
+
+function toggleSchedule() {
+  schedEnabled = !schedEnabled;
+  const toggle = document.getElementById('schedule-toggle');
+  const label = document.getElementById('schedule-toggle-label');
+  toggle.className = 'toggle' + (schedEnabled ? ' on' : '');
+  label.textContent = schedEnabled ? 'Enabled' : 'Disabled';
+}
+
+async function saveSchedule() {
+  const r = await api('/schedule', 'POST', {
+    enabled: schedEnabled,
+    interval_hours: parseInt(document.getElementById('sched-interval').value),
+    backup_type: document.getElementById('sched-type').value
+  });
+  if(r && r.status === 'ok') {
+    toast('Schedule saved', 'success');
+    loadSchedule();
+  }
+}
+
+async function runScheduledNow() {
+  const backup_type = document.getElementById('sched-type').value;
+  const r = await api('/schedule/run-now', 'POST', { backup_type });
+  if(!r) return;
+  if(r.status === 'success' || r.status === 'up_to_date') {
+    toast(`Run-now completed: ${r.status}`, 'success');
+    loadDashboard();
+  } else {
+    toast(`Run-now failed: ${r.message || 'unknown error'}`, 'error');
+  }
+}
+
+// ─── SETTINGS ────────────────────────────────────────────────────────────────
+async function loadConfig() {
+  const cfg = await api('/config');
+  if(!cfg) return;
+  document.getElementById('cfg-source').value = cfg.source_path || '';
+  document.getElementById('cfg-dest').value = cfg.destination_path || '';
+  document.getElementById('cfg-log').value = cfg.log_path || '';
+  document.getElementById('cfg-encrypt').checked = cfg.encrypt !== false;
+}
+
+async function saveConfig() {
+  const data = {
+    source_path: document.getElementById('cfg-source').value,
+    destination_path: document.getElementById('cfg-dest').value,
+    log_path: document.getElementById('cfg-log').value,
+    encrypt: document.getElementById('cfg-encrypt').checked,
+    passphrase: document.getElementById('cfg-pass').value
+  };
+  const r = await api('/config', 'POST', data);
+  if(r && r.status === 'ok') {
+    toast('Configuration saved', 'success');
+    document.getElementById('cfg-pass').value = '';
+  }
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+loadDashboard();
+previewBackup('incremental');
+</script>
+</body>
+</html>
