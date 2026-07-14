@@ -4,6 +4,7 @@ Runtime path helpers for local runs and Render deployments.
 
 import os
 from pathlib import Path
+from typing import Optional
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -30,7 +31,7 @@ def get_data_path(*parts: str) -> Path:
     return path
 
 
-def resolve_runtime_path(value: str | None, *default_parts: str) -> Path:
+def resolve_runtime_path(value: Optional[str], *default_parts: str) -> Path:
     """Resolve a configured path, keeping relative paths under the data root."""
     if value:
         path = Path(value)
