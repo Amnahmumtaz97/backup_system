@@ -14,7 +14,7 @@ A production-ready data backup system with AES-256 encryption, SHA-256 integrity
 | Integrity | SHA-256 checksums on every backup |
 | Scheduling | Automated backups via APScheduler |
 | Audit Logging | Tamper-evident log of all operations |
-| Web UI | Dark-themed dashboard at localhost:5000 |
+| Web UI | Dark-themed dashboard |
 | CLI | Full command-line interface |
 | Restore | Integrity-verified restore to any path |
 
