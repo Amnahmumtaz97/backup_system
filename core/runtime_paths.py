@@ -8,20 +8,45 @@ from typing import Optional
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+_DATA_ROOT: Optional[Path] = None
+
+
+def _ensure_writable_directory(path: Path) -> Optional[Path]:
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        probe = path / ".write_test"
+        probe.write_text("", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        return path
+    except OSError:
+        return None
 
 
 def get_data_root() -> Path:
     """Return the base directory used for config, logs, and backups."""
+    global _DATA_ROOT
+
+    if _DATA_ROOT is not None:
+        return _DATA_ROOT
+
+    candidates = []
     raw_root = os.getenv("DATAVAULT_DATA_DIR")
     if raw_root:
-        root = Path(raw_root)
-    elif os.getenv("RENDER"):
-        root = Path("/var/data")
-    else:
-        root = PROJECT_ROOT / "data"
+        candidates.append(Path(raw_root))
 
-    root.mkdir(parents=True, exist_ok=True)
-    return root
+    if os.getenv("RENDER"):
+        candidates.append(Path("/var/data"))
+
+    candidates.append(PROJECT_ROOT / "data")
+    candidates.append(Path("/tmp/datavault"))
+
+    for candidate in candidates:
+        root = _ensure_writable_directory(candidate)
+        if root is not None:
+            _DATA_ROOT = root
+            return root
+
+    raise RuntimeError("Unable to locate a writable DataVault data directory")
 
 
 def get_data_path(*parts: str) -> Path:
