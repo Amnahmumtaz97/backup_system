@@ -1,0 +1,97 @@
+DataVault Backup System - Installation and Quick Start
+=====================================================
+
+This guide explains how to run DataVault after receiving the project ZIP.
+
+Prerequisites
+-------------
+1. Windows, Linux, or macOS
+2. Python 3.10+ installed
+3. Internet connection (first run only, for installing dependencies)
+
+Step 1: Extract the Project
+---------------------------
+1. Extract the ZIP file to a folder.
+2. Open a terminal in the extracted project folder.
+
+Step 2: Install Dependencies
+----------------------------
+Run:
+
+python -m pip install -r requirements.txt
+
+If your system uses "python3", run:
+
+python3 -m pip install -r requirements.txt
+
+Step 3: Create Local Configuration
+----------------------------------
+1. Copy config/config.example.json to config/config.json
+2. Edit config/config.json and set your own values:
+   - source_path: folder to back up
+   - destination_path: where encrypted backup files are saved
+   - log_path: log file location (default: logs/audit.log)
+   - passphrase: your private encryption password
+   - encrypt: true
+
+Important: Keep your passphrase safe. Without it, encrypted backups cannot be restored.
+
+Step 4A: Run Web Dashboard (Recommended)
+----------------------------------------
+Run:
+
+python app.py
+
+Then open in browser:
+
+http://127.0.0.1:5000
+
+Step 4B: Run from CLI (Optional)
+--------------------------------
+Examples:
+
+python cli.py backup --type full
+python cli.py backup --type incremental
+python cli.py list
+python cli.py restore --name BACKUP_NAME --path RESTORE_PATH
+python cli.py stats
+python cli.py logs --n 30
+
+Use this for all commands:
+
+python cli.py --help
+
+Recommended First-Time Flow
+---------------------------
+1. Set config/config.json
+2. Run one full backup
+3. Run incremental backups for daily usage
+4. Verify restore with a test folder
+
+Troubleshooting
+---------------
+1. "No module named ..."
+   - Run: python -m pip install -r requirements.txt
+
+2. "Permission denied" while backup/restore
+   - Choose folders where your user has read/write access.
+
+3. Restore decryption/integrity errors
+   - Check passphrase in config/config.json.
+   - Verify archive was not modified/corrupted.
+
+4. Port 5000 already in use
+   - Stop other app using port 5000, or change port in app.py.
+
+Security Notes
+--------------
+1. Never share config/config.json with real passphrase.
+2. Keep encryption enabled (encrypt: true) for real data.
+3. Store backups in a secure location.
+
+Project Entry Points
+--------------------
+- Web app: app.py
+- CLI: cli.py
+- Core engine: core/backup_engine.py
+- UI: ui/index.html

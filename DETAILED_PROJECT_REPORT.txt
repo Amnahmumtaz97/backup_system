@@ -1,0 +1,284 @@
+DataVault Secure Data Backup System
+Detailed Project Report
+
+Project Information
+-------------------
+Project Title: DataVault - Secure Data Backup System
+Domain: Information Security
+Technology Stack: Python, Flask, Cryptography, APScheduler, HTML/CSS/JavaScript
+Project Type: Secure backup and restore application with web dashboard and CLI
+
+1. Executive Summary
+--------------------
+DataVault is a secure, automated backup solution designed to protect user data against loss, tampering, and unauthorized access. The system supports Full, Incremental, and Differential backups, encrypts backup archives using AES-256, verifies archive integrity using SHA-256, and offers both a web dashboard and command-line interface for usability.
+
+The project demonstrates practical implementation of information security principles through:
+- Confidentiality via password-based encryption
+- Integrity via hash-based tamper detection
+- Availability via scheduled backups and restore capabilities
+
+2. Problem Statement
+--------------------
+Users frequently store important files without a structured backup strategy. Common risks include:
+- Data loss from accidental deletion or hardware failure
+- Backup corruption without detection
+- Unencrypted backups exposing sensitive information
+- Complex tools that are difficult for non-technical users
+
+DataVault addresses these risks by combining automated backup logic, strong cryptography, integrity validation, and an accessible dashboard.
+
+3. Project Objectives
+---------------------
+Primary objectives:
+1. Build a secure backup engine in Python
+2. Support multiple backup strategies (Full, Incremental, Differential)
+3. Encrypt archives with AES-256 using passphrase-derived keys
+4. Detect tampering using SHA-256 archive verification
+5. Provide reliable restore operations
+6. Offer both web and CLI interfaces
+7. Enable automatic scheduled backups
+8. Maintain operation logs for auditing and troubleshooting
+
+4. Scope and Functional Requirements
+------------------------------------
+In-scope functionalities:
+- Source directory scanning and metadata collection
+- Change detection between current and historical states
+- Archive creation and encryption
+- Manifest generation for backup metadata
+- Restore by backup name with integrity checks
+- Chain-based restore for Incremental and Differential backups
+- Schedule configuration and background execution
+- Backup listing, deletion, verification, and download
+- Configuration management
+- Audit log retrieval and display
+
+Out-of-scope areas:
+- Cloud storage integration (local storage focus)
+- Multi-user authentication/authorization
+- Cross-machine distributed backup replication
+- Database-backed metadata service
+
+5. System Architecture
+----------------------
+DataVault uses a modular architecture with clear separation of responsibilities.
+
+Core components:
+1. Backup Engine (core/backup_engine.py)
+   - Scans source files
+   - Detects file changes
+   - Creates archives
+   - Handles encryption/decryption
+   - Restores backups and chains
+   - Verifies backup integrity
+
+2. Manifest Manager (core/manifest.py)
+   - Stores per-backup metadata as JSON
+   - Retrieves latest and full backup references
+   - Lists and deletes manifests
+
+3. Scheduler (core/scheduler.py)
+   - Uses APScheduler BackgroundScheduler
+   - Supports interval-based automated backups
+   - Persists schedule settings and status
+
+4. Audit Logger (core/logger.py)
+   - Writes timestamped log entries
+   - Supports log retrieval for UI and CLI
+
+5. Web Layer (app.py + ui/index.html)
+   - REST API endpoints
+   - Interactive dashboard for operations
+
+6. CLI Layer (cli.py)
+   - Scriptable command-line backup workflow
+
+Data flow summary:
+- User action (Web/CLI) -> BackupEngine -> archive + manifest + logs
+- Restore action -> integrity check + decryption + extraction + chain replay
+
+6. Security Design
+------------------
+6.1 Confidentiality
+- Encryption algorithm: AES-256 in CBC mode
+- Key derivation: PBKDF2-HMAC-SHA256 (100,000 iterations)
+- Inputs: user passphrase + random per-backup salt
+- Archive format includes metadata prefix for decryption compatibility
+- Strong recommendation: use long unique passphrases
+
+6.2 Integrity
+- SHA-256 archive hash stored in backup manifest
+- Hash is recomputed before restore
+- Restore aborts if archive hash mismatch is detected
+- Verification APIs support single and bulk integrity validation
+
+6.3 Availability
+- Full backup for complete snapshot
+- Incremental backup for fast frequent updates
+- Differential backup for balanced restore complexity
+- Scheduled backups using APScheduler
+- Chain-aware restore reconstructs required state
+
+7. Backup Strategies Implemented
+--------------------------------
+7.1 Full Backup
+- Captures all files from source directory
+- Independent restore point
+- Recommended for first backup and periodic baseline snapshots
+
+7.2 Incremental Backup
+- Captures only files changed since the last backup
+- Fast and storage-efficient
+- Restore requires replay of prior chain
+
+7.3 Differential Backup
+- Captures files changed since last full backup
+- Slower than incremental but simpler restore chain
+
+Deletion tracking:
+- Deleted files are recorded in manifest metadata
+- During chain restore, deleted files are removed from restored output
+
+8. Restore and Recovery Model
+-----------------------------
+Restore process:
+1. Resolve requested backup manifest
+2. Build restore chain (Full -> Differential/Incremental sequence)
+3. Verify hash for each archive in chain
+4. Decrypt archive payload
+5. Safely extract contents (path traversal checks)
+6. Apply deleted-file operations from manifests
+7. Return restore summary and execution duration
+
+Error handling includes:
+- Missing archive/manifests
+- Integrity mismatch
+- Decryption failure (wrong passphrase)
+- Invalid/corrupt archive payload
+
+9. User Interfaces
+------------------
+9.1 Web Dashboard
+Implemented features include:
+- Dashboard statistics and backup health metrics
+- Run backup actions with preview support
+- Backup list with search/filter
+- Verify, download, restore, and delete actions
+- Schedule management with run-now option
+- Configuration management
+- Audit log viewer
+
+9.2 CLI Interface
+Supported commands:
+- backup
+- restore
+- list
+- stats
+- delete
+- logs
+
+The CLI enables automated usage and integration in scripts.
+
+10. Configuration and Files
+---------------------------
+Important files and directories:
+- app.py: Flask application and API routes
+- cli.py: command-line tool
+- core/: backup logic modules
+- ui/index.html: dashboard frontend
+- config/config.example.json: sample configuration template
+- config/config.json: local runtime configuration
+- backups/: generated encrypted archives
+- backups/manifests/: backup metadata files
+- logs/: audit log output
+- tests/: unit test suite
+- INSTALL.txt: setup instructions for recipients
+
+11. API Capabilities (Web Backend)
+----------------------------------
+Representative API groups:
+- Config: get/update runtime configuration
+- Backup: run, list, preview, detail, restore, delete, verify, download
+- Schedule: get, save, run-now
+- Logs: recent log entries
+- Stats: backup summary
+- Browse: folder browsing helper endpoint
+
+12. Testing and Quality Validation
+----------------------------------
+The project includes automated tests for:
+- Full backup creation
+- Incremental detection logic
+- No-change behavior
+- Restore correctness
+- Tamper detection failure path
+- Wrong-passphrase decryption failure
+- Chain restore reconstruction behavior
+- Manifest manager save/load
+- Audit logger output
+- Subdirectory backup and restore
+- Backup preview behavior
+- Backup verification success path
+
+Current result baseline:
+- All tests pass in local environment
+
+13. Usability and UX Improvements
+---------------------------------
+Implemented usability upgrades:
+- Improved dashboard cards and responsive layout
+- Backup preview before execution
+- Health verification metric on dashboard
+- Search/filter controls in backup table
+- One-click verify and download actions
+- Better schedule controls including run-now operation
+
+14. Operational Guidelines
+--------------------------
+Recommended production usage pattern:
+1. Configure a secure passphrase and source/destination paths
+2. Run an initial Full backup
+3. Enable periodic Incremental schedule
+4. Run occasional Differential or Full backups
+5. Verify backups regularly
+6. Test restore process to a safe location
+7. Monitor logs and storage usage
+
+15. Risks and Mitigation
+------------------------
+Risk: Passphrase loss
+Mitigation: Store passphrase in secure password manager; no plaintext sharing.
+
+Risk: Local disk failure at destination
+Mitigation: Copy encrypted archives to external/offsite media.
+
+Risk: Misconfigured source path
+Mitigation: Validate source directory before scheduling.
+
+Risk: Corrupted archive
+Mitigation: SHA-256 verification before restore and regular verify-all checks.
+
+16. Limitations
+---------------
+Current limitations:
+- Local-file focus only (no cloud sync)
+- Single-app configuration profile
+- No role-based multi-user control
+- Development server default for web runtime
+
+17. Future Enhancements
+-----------------------
+Potential next-phase enhancements:
+1. Multi-profile backup jobs
+2. Compression tuning options
+3. Cloud storage adapters (Azure/AWS/GCP)
+4. Role-based authentication for dashboard access
+5. Signed manifests for stronger authenticity guarantees
+6. Backup retention policy automation
+7. Restore dry-run simulator with conflict preview
+
+18. Conclusion
+--------------
+DataVault delivers a practical, secure, and user-friendly backup system aligned with core information security goals. It combines strong encryption, integrity validation, reliable restore workflows, and automation to reduce operational risk and improve resilience. The project is suitable as an academic security implementation and as a foundation for further production-oriented enhancements.
+
+End of Report
