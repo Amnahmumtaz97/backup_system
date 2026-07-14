@@ -9,13 +9,15 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
+from .runtime_paths import resolve_runtime_path
+
 
 class BackupScheduler:
     JOB_ID = "datavault_backup_job"
 
-    def __init__(self, engine, schedule_file: str = "config/schedule.json"):
+    def __init__(self, engine, schedule_file: str | None = None):
         self.engine = engine
-        self.schedule_file = Path(schedule_file)
+        self.schedule_file = resolve_runtime_path(schedule_file, "config", "schedule.json")
         self.schedule_file.parent.mkdir(parents=True, exist_ok=True)
         self._scheduler = BackgroundScheduler(daemon=True)
         self.schedule = self._load_schedule()

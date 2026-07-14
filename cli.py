@@ -12,17 +12,18 @@ from pathlib import Path
 # Ensure we can import core modules
 sys.path.insert(0, str(Path(__file__).parent))
 from core import BackupEngine, AuditLogger
+from core.runtime_paths import get_data_path, get_data_root
 
 
 def load_config():
-    cfg_file = Path("config/config.json")
+    cfg_file = get_data_path("config", "config.json")
     if cfg_file.exists():
         with open(cfg_file) as f:
             return json.load(f)
     return {
         "source_path": str(Path.home() / "Documents"),
-        "destination_path": "backups",
-        "log_path": "logs/audit.log",
+        "destination_path": str(get_data_root() / "backups"),
+        "log_path": str(get_data_root() / "logs" / "audit.log"),
         "passphrase": "default_passphrase"
     }
 

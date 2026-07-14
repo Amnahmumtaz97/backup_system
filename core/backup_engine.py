@@ -26,6 +26,7 @@ except ImportError:
 
 from .manifest import ManifestManager
 from .logger import AuditLogger
+from .runtime_paths import resolve_runtime_path
 
 
 class BackupEngine:
@@ -34,10 +35,10 @@ class BackupEngine:
     def __init__(self, config: dict):
         self.config = config
         self.source = Path(config.get("source_path", ""))
-        self.destination = Path(config.get("destination_path", "backups"))
+        self.destination = resolve_runtime_path(config.get("destination_path"), "backups")
         self.destination.mkdir(parents=True, exist_ok=True)
         self.manifest_mgr = ManifestManager(self.destination / "manifests")
-        self.logger = AuditLogger(config.get("log_path", "logs/audit.log"))
+        self.logger = AuditLogger(config.get("log_path"))
         self.encrypt_enabled = config.get("encrypt", True)
         self.passphrase = config.get("passphrase", "default_passphrase")
 

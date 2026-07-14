@@ -9,17 +9,17 @@ import json
 from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory, send_file
 from core import BackupEngine, BackupScheduler, AuditLogger
+from core.runtime_paths import get_data_path, get_data_root
 
 app = Flask(__name__, static_folder="ui", static_url_path="")
 
 # Load or create config
-CONFIG_FILE = Path("config/config.json")
-CONFIG_FILE.parent.mkdir(exist_ok=True)
+CONFIG_FILE = get_data_path("config", "config.json")
 
 DEFAULT_CONFIG = {
     "source_path": str(Path.home() / "Documents"),
-    "destination_path": "backups",
-    "log_path": "logs/audit.log",
+    "destination_path": str(get_data_root() / "backups"),
+    "log_path": str(get_data_root() / "logs" / "audit.log"),
     "passphrase": "change_me_in_settings"
 }
 

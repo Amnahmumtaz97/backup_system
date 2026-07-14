@@ -7,12 +7,14 @@ import hashlib
 from datetime import datetime
 from pathlib import Path
 
+from .runtime_paths import resolve_runtime_path
+
 
 class AuditLogger:
     LEVELS = {"DEBUG": "🔍", "INFO": "ℹ️ ", "WARNING": "⚠️ ", "SUCCESS": "✅", "ERROR": "❌"}
 
-    def __init__(self, log_path: str = "logs/audit.log"):
-        self.log_path = Path(log_path)
+    def __init__(self, log_path: str | None = None):
+        self.log_path = resolve_runtime_path(log_path, "logs", "audit.log")
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
 
     def log(self, message: str, level: str = "INFO"):
